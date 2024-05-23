@@ -220,23 +220,3 @@ export const handleDocumentUpload = async (
     path: objectKey,
   };
 };
-
-// Get Authentication Result
-export const getAuthResult = async (
-  cognitoISP: any,
-  username: string,
-  password: string,
-) => {
-  const response = await cognitoISP
-    .initiateAuth({
-      AuthFlow: 'USER_PASSWORD_AUTH',
-      ClientId: process.env.COGNITO_APP_CLIENT_ID!,
-      AuthParameters: {
-        USERNAME: username,
-        PASSWORD: password,
-      },
-    })
-    .promise();
-
-  return response?.AuthenticationResult;
-};

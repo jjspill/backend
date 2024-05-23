@@ -56,6 +56,8 @@ export class BackendStack extends cdk.Stack {
     // Cognito User Pool Client for the Lambda function
     const userPoolClient = new cognito.UserPoolClient(this, 'userPoolClient', {
       userPool,
+      authFlows: { userPassword: true },
+      generateSecret: false,
     });
 
     // Lambda function
@@ -74,6 +76,9 @@ export class BackendStack extends cdk.Stack {
 
     table.grantReadWriteData(fn);
     pdfBucket.grantReadWrite(fn);
+    userPool.grant(fn, 'cognito-idp:AdminCreateUser');
+    userPool.grant(fn, 'cognito-idp:AdminUpdateUserAttributes');
+    userPool.grant(fn, 'cognito-idp:AdminDeleteUser');
 
     // const certificateArn =
     //   'arn:aws:acm:us-east-1:917740396733:certificate/b058dc50-8c9d-4fb5-bc9e-de47ceafc874';
