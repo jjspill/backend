@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
 
-const app = new Hono();
+import experiences from './routes/experiences';
 
-app.get('/', (c) => c.text('Hello Hono!'));
+export const app = new Hono();
+
+app.route('experiences', experiences);
 
 export const handler = handle(app);
