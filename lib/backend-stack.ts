@@ -16,9 +16,17 @@ export class BackendStack extends cdk.Stack {
     super(scope, id, props);
 
     // DynamoDB table(s)
-    const table = new dynamodb.Table(this, 'ExperienceTable', {
+    const experiencesTable = new dynamodb.Table(this, 'ExperienceTable', {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       tableName: props.isProd ? 'ExperienceDataProd' : 'ExperienceDataPreview',
+      removalPolicy: props.isProd
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
+    });
+
+    const usersTable = new dynamodb.Table(this, 'UsersTable', {
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      tableName: props.isProd ? 'UsersDataProd' : 'UsersDataPreview',
       removalPolicy: props.isProd
         ? cdk.RemovalPolicy.RETAIN
         : cdk.RemovalPolicy.DESTROY,
@@ -36,11 +44,49 @@ export class BackendStack extends cdk.Stack {
     });
 
     // Cognito User Pool for authentication
+    // const userPool = new cognito.UserPool(this, 'userPool', {
+    //   userPoolName: props.isProd ? 'ProdUserPool' : 'PreviewUserPool',
+    //   selfSignUpEnabled: true,
+    //   autoVerify: { email: false },
+    //   signInAliases: { email: true },
+    //   passwordPolicy: {
+    //     minLength: 8,
+    //     requireLowercase: true,
+    //     requireUppercase: true,
+    //     requireDigits: true,
+    //     requireSymbols: true,
+    //   },
+    //   removalPolicy: props.isProd
+    //     ? cdk.RemovalPolicy.RETAIN
+    //     : cdk.RemovalPolicy.DESTROY,
+
+    //   customAttributes: {
+    //     name: new cognito.StringAttribute({ mutable: true }),
+    //   },
+    // });
+
     const userPool = new cognito.UserPool(this, 'userPool', {
       userPoolName: props.isProd ? 'ProdUserPool' : 'PreviewUserPool',
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      mfa: cognito.Mfa.OFF,
       selfSignUpEnabled: true,
-      autoVerify: { email: true },
-      signInAliases: { email: true },
+      signInAliases: {
+        username: false, // Disable username, use email as primary identifier
+        email: true, // Enable email as sign-in alias
+      },
+      autoVerify: {
+        email: false,
+      },
+      standardAttributes: {
+        email: {
+          required: true, // Ensure email is required for each user
+          mutable: true,
+        },
+        fullname: {
+          required: true, // Ensure fullname is required for each user
+          mutable: true,
+        },
+      },
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
@@ -56,7 +102,7 @@ export class BackendStack extends cdk.Stack {
     // Cognito User Pool Client for the Lambda function
     const userPoolClient = new cognito.UserPoolClient(this, 'userPoolClient', {
       userPool,
-      authFlows: { userPassword: true },
+      authFlows: { userPassword: true, adminUserPassword: true },
       generateSecret: false,
     });
 
@@ -67,18 +113,21 @@ export class BackendStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.seconds(60),
       environment: {
-        TABLE_NAME: table.tableName,
+        TABLE_NAME: experiencesTable.tableName,
         BUCKET_NAME: pdfBucket.bucketName,
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_APP_CLIENT_ID: userPoolClient.userPoolClientId,
       },
     });
 
-    table.grantReadWriteData(fn);
+    experiencesTable.grantReadWriteData(fn);
+    usersTable.grantReadWriteData(fn);
     pdfBucket.grantReadWrite(fn);
     userPool.grant(fn, 'cognito-idp:AdminCreateUser');
     userPool.grant(fn, 'cognito-idp:AdminUpdateUserAttributes');
     userPool.grant(fn, 'cognito-idp:AdminDeleteUser');
+    userPool.grant(fn, 'cognito-idp:AdminSetUserPassword');
+    userPool.grant(fn, 'cognito-idp:AdminInitiateAuth');
 
     // const certificateArn =
     //   'arn:aws:acm:us-east-1:917740396733:certificate/b058dc50-8c9d-4fb5-bc9e-de47ceafc874';

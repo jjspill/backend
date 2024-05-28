@@ -3,6 +3,8 @@ import {
   cognitoISP,
   createUserAccount,
   deleteUserAccount,
+  extractNameFromIdToken,
+  getUserIdFromToken,
   updateUserAccount,
 } from '../helpers/accountHelpers';
 
@@ -30,17 +32,20 @@ account.post('/login', async (c) => {
         session: loginResponse.Session,
       });
     }
-
     if (loginResponse.AuthenticationResult) {
       return c.json({
         message: 'Login successful',
+        username,
+        name: extractNameFromIdToken(
+          loginResponse.AuthenticationResult.IdToken!,
+        ),
         accessToken: loginResponse.AuthenticationResult.AccessToken,
         refreshToken: loginResponse.AuthenticationResult.RefreshToken,
         idToken: loginResponse.AuthenticationResult.IdToken,
         expiresIn: loginResponse.AuthenticationResult.ExpiresIn,
+        sub: getUserIdFromToken(loginResponse.AuthenticationResult.IdToken!),
       });
     } else {
-      console.log(loginResponse);
       return c.json(
         { error: 'Authentication failed, no tokens received.' },
         401,
@@ -58,12 +63,28 @@ account.post('/login', async (c) => {
   }
 });
 
-// Create User Endpoint
+// Create User Endpoint and Login
 account.post('/users', async (c) => {
   const { username, password, attributes } = await c.req.json();
+  console.log('Creating user:', username);
+
+  attributes.append;
   try {
-    const userId = await createUserAccount({ username, password, attributes });
-    return c.json({ message: 'User created successfully', userId });
+    const { Email, Tokens, Sub, Name, Session } = await createUserAccount({
+      email: username,
+      password,
+      attributes,
+    });
+    return c.json({
+      message: 'User created and logged in successfully',
+      username: Email,
+      name: Name,
+      accessToken: Tokens.AccessToken,
+      refreshToken: Tokens.RefreshToken,
+      idToken: Tokens.IdToken,
+      expiresIn: Tokens.ExpiresIn,
+      sub: Sub,
+    });
   } catch (error) {
     console.error('Error creating user:', error);
     return c.json({ error: 'Failed to create user', details: error }, 400);
@@ -95,31 +116,81 @@ account.delete('/users/:username', async (c) => {
   }
 });
 
-account.post('/set-new-password', async (c) => {
-  const { username, session, newPassword } = await c.req.json();
+account.post('/change-password', async (c) => {
+  const { accessToken, previousPassword, newPassword } = await c.req.json();
 
   try {
     const result = await cognitoISP
-      .respondToAuthChallenge({
-        ClientId: process.env.COGNITO_APP_CLIENT_ID!,
-        ChallengeName: 'NEW_PASSWORD_REQUIRED',
-        Session: session,
-        ChallengeResponses: {
-          USERNAME: username,
-          NEW_PASSWORD: newPassword,
-        },
+      .changePassword({
+        AccessToken: accessToken,
+        PreviousPassword: previousPassword,
+        ProposedPassword: newPassword,
       })
       .promise();
 
     return c.json({
-      message: 'Password updated successfully',
+      message: 'Password changed successfully',
       details: result,
     });
   } catch (error) {
-    console.error('Error updating password:', error);
+    console.error('Error changing password:', error);
     return c.json(
       {
-        error: 'Failed to update password',
+        error: 'Failed to change password',
+        details: error,
+      },
+      400,
+    );
+  }
+});
+
+account.post('/forgot-password', async (c) => {
+  const { username } = await c.req.json();
+  try {
+    const response = await cognitoISP
+      .forgotPassword({
+        ClientId: process.env.COGNITO_APP_CLIENT_ID!,
+        Username: username,
+      })
+      .promise();
+
+    return c.json({
+      message: 'Password reset code sent successfully',
+      details: response,
+    });
+  } catch (error) {
+    console.error('Error sending reset password code:', error);
+    return c.json(
+      {
+        error: 'Failed to send password reset code',
+        details: error,
+      },
+      400,
+    );
+  }
+});
+
+account.post('/reset-password', async (c) => {
+  const { username, code, newPassword } = await c.req.json();
+  try {
+    const response = await cognitoISP
+      .confirmForgotPassword({
+        ClientId: process.env.COGNITO_APP_CLIENT_ID!,
+        Username: username,
+        ConfirmationCode: code,
+        Password: newPassword,
+      })
+      .promise();
+
+    return c.json({
+      message: 'Password reset successfully',
+      details: response,
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    return c.json(
+      {
+        error: 'Failed to reset password',
         details: error,
       },
       400,
