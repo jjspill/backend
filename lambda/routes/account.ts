@@ -66,7 +66,6 @@ account.post('/login', async (c) => {
 // Create User Endpoint and Login
 account.post('/users', async (c) => {
   const { username, password, attributes } = await c.req.json();
-  console.log('Creating user:', username);
 
   attributes.append;
   try {

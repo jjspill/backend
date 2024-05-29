@@ -9,6 +9,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 interface BackendStackProps extends cdk.StackProps {
   isProd: boolean;
+  authToken: string;
 }
 
 export class BackendStack extends cdk.Stack {
@@ -87,6 +88,13 @@ export class BackendStack extends cdk.Stack {
           mutable: true,
         },
       },
+      signInCaseSensitive: false,
+      userVerification: {
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+        emailSubject: 'Reset your password',
+        emailBody:
+          "Your reset password code is {####}. Please enter this code to reset your password. If you didn't request a password reset, you can ignore this email.",
+      },
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
@@ -117,6 +125,7 @@ export class BackendStack extends cdk.Stack {
         BUCKET_NAME: pdfBucket.bucketName,
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_APP_CLIENT_ID: userPoolClient.userPoolClientId,
+        AUTH_TOKEN: props.authToken,
       },
     });
 
