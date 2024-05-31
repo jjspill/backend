@@ -34,7 +34,7 @@ export function getUserIdFromToken(idToken: string): string | undefined {
 export function extractNameFromIdToken(idToken: string): string | undefined {
   try {
     const decoded = jwt.decode(idToken);
-    return decoded['name']; // 'name' should match the key in the token claims
+    return (decoded as any)['name']; // 'name' should match the key in the token claims
   } catch (error) {
     console.error('Failed to decode IdToken:', error);
     return undefined;

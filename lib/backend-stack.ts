@@ -33,6 +33,13 @@ export class BackendStack extends cdk.Stack {
         : cdk.RemovalPolicy.DESTROY,
     });
 
+    // DynamoDB table for subway stops
+    const subwayStopsTable = new dynamodb.Table(this, 'SubwayStops', {
+      partitionKey: { name: 'stop_id', type: dynamodb.AttributeType.STRING },
+      tableName: 'SubwayStopsPreview',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     // S3 Bucket for storing PDFs
     const pdfBucket = new s3.Bucket(this, 'pdfBucket', {
       bucketName: props.isProd ? 'backend-prod-pdfs' : 'backend-preview-pdfs',
@@ -114,6 +121,12 @@ export class BackendStack extends cdk.Stack {
       generateSecret: false,
     });
 
+    const gtfsHandlerTable = dynamodb.Table.fromTableName(
+      this,
+      'GtfsHandlerTable',
+      'GtfsHandlerTable',
+    );
+
     // Lambda function
     const fn = new NodejsFunction(this, 'backend-lambda', {
       entry: 'lambda/index.ts',
@@ -126,12 +139,15 @@ export class BackendStack extends cdk.Stack {
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_APP_CLIENT_ID: userPoolClient.userPoolClientId,
         AUTH_TOKEN: props.authToken,
+        GTFS_HANDLER_TABLE_NAME: gtfsHandlerTable.tableName,
       },
     });
 
     experiencesTable.grantReadWriteData(fn);
     usersTable.grantReadWriteData(fn);
     pdfBucket.grantReadWrite(fn);
+    subwayStopsTable.grantReadWriteData(fn);
+    gtfsHandlerTable.grantReadData(fn);
     userPool.grant(fn, 'cognito-idp:AdminCreateUser');
     userPool.grant(fn, 'cognito-idp:AdminUpdateUserAttributes');
     userPool.grant(fn, 'cognito-idp:AdminDeleteUser');
