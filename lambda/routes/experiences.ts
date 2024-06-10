@@ -59,6 +59,9 @@ experiences.post('/:id', async (c) => {
 experiences.get('/', async (c) => {
   try {
     const data = await getExperienceData(dynamoDb);
+    // const filteredData = data.filter(
+    //   (item) => item.id !== 'LinkedIn' && item.id !== 'GitHub',
+    // );
     return c.json({
       message: 'Data retrieved successfully',
       data,

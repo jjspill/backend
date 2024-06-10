@@ -34,11 +34,11 @@ export class BackendStack extends cdk.Stack {
     });
 
     // DynamoDB table for subway stops
-    const subwayStopsTable = new dynamodb.Table(this, 'SubwayStops', {
-      partitionKey: { name: 'stop_id', type: dynamodb.AttributeType.STRING },
-      tableName: 'SubwayStopsPreview',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // const subwayStopsTable = new dynamodb.Table(this, 'SubwayStops', {
+    //   partitionKey: { name: 'stop_id', type: dynamodb.AttributeType.STRING },
+    //   tableName: props.isProd ? 'SubwayStopsProd' : 'SubwayStopsPreview',
+    //   removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // });
 
     // S3 Bucket for storing PDFs
     const pdfBucket = new s3.Bucket(this, 'pdfBucket', {
@@ -146,7 +146,6 @@ export class BackendStack extends cdk.Stack {
     experiencesTable.grantReadWriteData(fn);
     usersTable.grantReadWriteData(fn);
     pdfBucket.grantReadWrite(fn);
-    subwayStopsTable.grantReadWriteData(fn);
     gtfsHandlerTable.grantReadData(fn);
     userPool.grant(fn, 'cognito-idp:AdminCreateUser');
     userPool.grant(fn, 'cognito-idp:AdminUpdateUserAttributes');
