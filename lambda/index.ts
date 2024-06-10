@@ -4,6 +4,7 @@ import { bearerAuth } from 'hono/bearer-auth';
 
 import experiences from './routes/experiences';
 import account from './routes/account';
+// import train from './routes/train';
 
 export const app = new Hono();
 
@@ -18,5 +19,6 @@ app.get('/', (c) => {
 
 app.route('/experiences', experiences);
 app.route('/account', account);
+// app.route('/trains', train);
 
 export const handler = handle(app);
